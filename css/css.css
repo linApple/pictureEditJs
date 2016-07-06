@@ -1,0 +1,13 @@
+.wp-picwrap {
+    overflow: hidden;
+    position: relative;
+    cursor: pointer;
+}
+
+.wp-pic {
+    position: absolute;
+    z-index: 0;
+    left: 0px;
+    top: 0px;
+    backface-visibility: hidden;
+}
