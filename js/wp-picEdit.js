@@ -10,10 +10,11 @@
         var mask = $("#" + id),
             pic = mask.find(".wp-pic");
         var pointData = {};
-        var canMove = false;
+        var mouseDown = false;
         var hasMove = false;
         var examData = [];
         var index = 0;
+        var canMove = true;
         var selfEvent = {
             click: function(area) {
 
@@ -50,14 +51,17 @@
             pointData.downY = event.pageY;
             pointData.picX = pic.position().left;
             pointData.picY = pic.position().top;
-            canMove = true;
+            mouseDown = true;
         }).mouseup(function(event) {
-            canMove = false;
+            mouseDown = false;
         }).mouseout(function() {
-            canMove = false;
+            mouseDown = false;
         }).mousemove(function(event) {
-            if (canMove) {
-                hasMove=true;
+            if (!canMove) {
+                return false;
+            }
+            if (mouseDown) {
+                hasMove = true;
                 !event.preventDefault || event.preventDefault();
                 pic.css("left", pointData.picX + event.pageX - pointData.downX)
                     .css("top", pointData.picY + event.pageY - pointData.downY);
@@ -67,8 +71,8 @@
             var area = model.getArea(event.pageX, event.pageY);
             !area || selfEvent.dblclick(area);
         }).click(function(event) {
-            if(hasMove){
-                hasMove=false;
+            if (hasMove) {
+                hasMove = false;
                 return false;
             }
             var area = model.getArea(event.pageX, event.pageY);
@@ -138,6 +142,10 @@
                 .css("top", pic.position().top + targetY - (r.y - pic.offset().top) * percent - pic.offset().top);
             moveBorder();
             return this;
+        }
+
+        AreaModel.prototype.onlyShow = function() {
+            var r = this.getCurrentPosition();
         }
 
         AreaModel.prototype.selected = function() {
@@ -255,20 +263,31 @@
             var style;
             for (var i in examData) {
                 style = fc(examData[i]);
-                examData[i].div.css(style.css);
+                examData[i].div.css(style.css).addClass(style.class);;
                 var ele;
                 for (var j in style.inner) {
                     ele = style.inner[j];
-                    examData[i].div.append($(ele.html).css(ele.css).click(function() {
+                    examData[i].div.append($(ele.html).css(ele.css).addClass(ele.class).click(function() {
                         var area = examData[i];
+                        var ele2 = ele;
                         return function(event) {
-                            ele.event(area);
+                            ele2.event(area);
                             event.stopPropagation();
                         }
                     }()));
                 }
             }
+            return this;
         }
+
+        PicModel.prototype.positionChange = function() {
+            pointData.maskX = mask.offset().left;
+            pointData.maskY = mask.offset().top;
+        }
+        PicModel.prototype.setMove = function(m) {
+            canMove = m;
+        }
+
 
 
 
