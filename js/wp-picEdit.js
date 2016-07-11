@@ -10,8 +10,8 @@
         var mask = $("#" + id),
             pic = mask.find(".wp-pic");
         var pointData = {};
-        var mouseDown = false;
-        var hasMove = false;
+        var mouseDown = false; //是否按下的标志
+        var hasMove = false; //点击按下后是否移动过标志
         var examData = [];
         var index = 0;
         var canMove = true;
@@ -20,6 +20,9 @@
 
             },
             dblclick: function(area) {
+
+            },
+            hover: function(area) {
 
             }
         };
@@ -41,7 +44,7 @@
 
         function moveBorder() {
             for (var i in examData) {
-                examData[i].selected().selected();
+                examData[i].redraw();
             }
         }
 
@@ -52,33 +55,52 @@
             pointData.picX = pic.position().left;
             pointData.picY = pic.position().top;
             mouseDown = true;
+            mask.find(".smallmask").remove();
         }).mouseup(function(event) {
             mouseDown = false;
+            hasMove = false;
         }).mouseout(function() {
-            mouseDown = false;
+            if (mouseDown) {
+                mouseDown = false;
+                hasMove = false;
+            }
         }).mousemove(function(event) {
             if (!canMove) {
                 return false;
             }
             if (mouseDown) {
-                hasMove = true;
-                !event.preventDefault || event.preventDefault();
+                if (!hasMove) {
+                    if (Math.pow((event.pageX - pointData.downX), 2) + Math.pow((event.pageY - pointData.downY), 2) >= 9) {
+                        hasMove = true;
+                    }
+                }!event.preventDefault || event.preventDefault();
                 pic.css("left", pointData.picX + event.pageX - pointData.downX)
                     .css("top", pointData.picY + event.pageY - pointData.downY);
                 moveBorder();
             }
-        }).dblclick(function(event) {
-            var area = model.getArea(event.pageX, event.pageY);
-            !area || selfEvent.dblclick(area);
-        }).click(function(event) {
-            if (hasMove) {
-                hasMove = false;
-                return false;
-            }
-            var area = model.getArea(event.pageX, event.pageY);
-            !area || selfEvent.click(area);
         });
 
+        /***********鼠标滑轮监听***********/
+        if (mask.get(0).addEventListener)
+            mask.get(0).addEventListener('DOMMouseScroll', wheel, false);
+        mask.get(0).onmousewheel = mask.get(0).onmousewheel = wheel;
+
+        function wheel(event) {
+            var delta = 0;
+            if (!event)
+                event = window.event;
+            if (event.wheelDelta) {
+                delta = event.wheelDelta / 120;
+            } else if (event.detail) {
+                delta = -event.detail / 3;
+            }
+            if (delta) {
+                delta > 0 ? PicModel.prototype.Large() : PicModel.prototype.Less();
+            }
+            if (event.preventDefault)
+                event.preventDefault();
+            event.returnValue = false;
+        }
 
 
         function PicModel() {
@@ -90,9 +112,52 @@
             this.order = index;
             this.position = position;
             this.data = data;
-            this.div = $("<div></div>").css("position", "absolute").css("display", "none").attr("id", this.id);
-            this.divShow = false;
+            this.click = false;
+            this.div = $("<div></div>")
+                .attr("id", this.id)
+                .width(position.w)
+                .height(position.h)
+                .addClass("areamask")
+                .css({
+                    position: 'absolute',
+                    left: position.x,
+                    top: position.y
+                });
+
+            mask.append(this.div);
+            this.hoverDiv = $("<div></div>").css({
+                width: '100%',
+                height: '100%',
+                display: 'none'
+            });
+            this.clickDiv = this.hoverDiv.clone();
+            this.div.append(this.hoverDiv).append(this.clickDiv);
+            var that = this;
+            var isdbClick = false;
+            this.div.click(function() {
+                setTimeout(function() {
+                    if (!isdbClick) {
+                        if (!hasMove) {
+                            that.hoverDiv.hide();
+                            that.click ? that.clickDiv.fadeOut() : that.clickDiv.fadeIn();
+                            that.click = !that.click;
+                            selfEvent.click(that);
+                        } else {
+                            hasMove = false;
+                        }
+                    }
+                }, 200);
+            }).dblclick(function() {
+                isdbClick = true;
+                that.clickDiv.hide();
+                selfEvent.dblclick(that);
+            }).mouseover(function() {
+                that.click || that.hoverDiv.show();
+            }).mouseout(function() {
+                that.hoverDiv.hide();
+            });
         }
+
         AreaModel.prototype.getCurrentPosition = function() {
             var xPercent = pic.width() / pointData.picW,
                 yPercent = pic.height() / pointData.picH;
@@ -146,54 +211,61 @@
 
         AreaModel.prototype.onlyShow = function() {
             var r = this.getCurrentPosition();
-        }
-
-        AreaModel.prototype.selected = function() {
-            if (!this.divShow) {
-                mask.append(this.div);
-                this.divShow = true;
+            var div = $("<div></div>")
+                .addClass("smallmask")
+                .css({ position: 'absolute', 'background-color': 'white' });
+            if (r.x > pointData.maskX) {
+                mask.append(div.clone().css("left", 0).css("top", 0).width(r.x - pointData.maskX).height(pointData.maskH));
             }
-            if (this.div.css("display") == "none") {
-                this.div.show();
-                var r = this.getCurrentPosition();
-                this.div.width(r.w)
-                    .height(r.h)
-                    .css("left", r.x - pointData.maskX)
-                    .css("top", r.y - pointData.maskY);
-            } else {
-                this.div.hide();
+            if (r.y > pointData.maskY) {
+                mask.append(div.clone().css("left", 0).css("top", 0).width(pointData.maskW).height(r.y - pointData.maskY));
+            }
+            if (pointData.maskX + pointData.maskW > r.x + r.w) {
+                mask.append(div.clone().css("left", r.x + r.w - pointData.maskX).css("top", 0).width(pointData.maskX + pointData.maskW - r.x - r.w).height(pointData.maskH));
+            }
+            if (pointData.maskY + pointData.maskH > r.y + r.h) {
+                mask.append(div.clone().css("left", 0).css("top", r.y + r.h - pointData.maskY).width(pointData.maskW).height(pointData.maskY + pointData.maskH - r.y - r.h));
             }
             return this;
+        }
+
+
+        AreaModel.prototype.redraw = function() {
+            var r = this.getCurrentPosition();
+            this.div.width(r.w)
+                .height(r.h)
+                .css("left", r.x - pointData.maskX)
+                .css("top", r.y - pointData.maskY);
         }
 
         PicModel.prototype.initData = function() {
             if (picUrl) {
-                pic = $("<img>").addClass("wp-pic");
-                mask.html(pic);
+                var newPic = $("<img>").addClass("wp-pic");
+                pic.parent().html(newPic);
+                pic = newPic;
                 pic.attr("src", picUrl);
             }
             pic.width() == 0 ? pic.load(dataInit) : dataInit(); //保证能获取图片数据
         }
-        PicModel.prototype.setLarge = function(ele) {
-            ele.click(function() {
-                var addWidth = 0.25 * pic.width(),
-                    addHeight = 0.25 * pic.height();
-                pic.css("left", pic.position().left - addWidth / 2)
-                    .css("top", pic.position().top - addHeight / 2)
-                    .width(pic.width() + addWidth);
-                moveBorder();
-            });
+        PicModel.prototype.Large = function() {
+            var addWidth = 0.25 * pic.width(),
+                addHeight = 0.25 * pic.height();
+            pic.css("left", pic.position().left - addWidth / 2)
+                .css("top", pic.position().top - addHeight / 2)
+                .width(pic.width() + addWidth);
+            moveBorder();
             return this;
         }
-        PicModel.prototype.setLess = function(ele) {
-            ele.click(function() {
-                var reduWidth = 0.2 * pic.width(),
-                    reduHeight = 0.2 * pic.height();
-                pic.css("left", pic.position().left + reduWidth / 2)
-                    .css("top", pic.position().top + reduHeight / 2)
-                    .width(pic.width() - reduWidth);
-                moveBorder();
-            });
+        PicModel.prototype.Less = function() {
+            if (pic.width() <= pointData.picW) {
+                return false;
+            }
+            var reduWidth = 0.2 * pic.width(),
+                reduHeight = 0.2 * pic.height();
+            pic.css("left", pic.position().left + reduWidth / 2)
+                .css("top", pic.position().top + reduHeight / 2)
+                .width(pic.width() - reduWidth);
+            moveBorder();
             return this;
         }
 
@@ -263,11 +335,23 @@
             var style;
             for (var i in examData) {
                 style = fc(examData[i]);
-                examData[i].div.css(style.css).addClass(style.class);;
+                examData[i].clickDiv.css(style.click.css).addClass(style.click.classes);
+                examData[i].hoverDiv.css(style.hover.css).addClass(style.hover.classes);
                 var ele;
-                for (var j in style.inner) {
-                    ele = style.inner[j];
-                    examData[i].div.append($(ele.html).css(ele.css).addClass(ele.class).click(function() {
+                for (var j in style.click.inner) {
+                    ele = style.click.inner[j];
+                    examData[i].clickDiv.append($(ele.html).css(ele.css).addClass(ele.classes).click(function() {
+                        var area = examData[i];
+                        var ele2 = ele;
+                        return function(event) {
+                            ele2.event(area);
+                            event.stopPropagation();
+                        }
+                    }()));
+                }
+                for (var j in style.hover.inner) {
+                    ele = style.hover.inner[j];
+                    examData[i].hoverDiv.append($(ele.html).css(ele.css).addClass(ele.classes).click(function() {
                         var area = examData[i];
                         var ele2 = ele;
                         return function(event) {

@@ -11,14 +11,13 @@
 </head>
 
 <body>
-    <div id="test1" class="wp-picwrap" style="width:900px;height:800px;left:100px;top:100px;border:solid 1px #00ccff">
-        <img src="test.jpg" class="wp-pic">
+    <div id="test1" class="wp-picwrap" style="width:900px;height:800px;left:100px;top:100px">
+            <img src="test.jpg" class="wp-pic">
     </div>
     <button id="big">放大</button>
     <button id="small">缩小</button>
     <script type="text/javascript">
     var model = WpPicModel("test1", "test.jpg");
-    model.setLess($("#small")).setLarge($("#big")).setMove(false);
 
     var data1 = [{
         position: {
@@ -72,22 +71,11 @@
         }
     }];
 
-    var data2 = [{
-        position: {
-            x: 500,
-            y: 330,
-            w: 450,
-            h: 100
-        },
-        data: {
-            title: "选择题九"
-        }
-    }];
+   
     model.setPicData(data1)
         .setEvent("click", function(area) {
-            area.selected();
             console.log(area.data);
-            //console.log(area.location("top").data);
+            //area.location("center").onlyShow();
         })
         .setEvent("dblclick", function(area) {
             area.location("top");
@@ -128,7 +116,10 @@
                     }
                 }]
             };
-            return areaStyle;
+            return {
+                click:areaStyle,
+                hover:areaStyle
+            };
 
         });
     </script>
