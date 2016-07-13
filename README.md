@@ -11,52 +11,47 @@
 
 	var model = WpPicModel("test1", "test.jpg");//获得picModel模型
 	var data1 = [{
-        position: {//题目相对于试卷的位置坐标以及宽高，单位px
+        position: [{
             x: 40,
             y: 440,
             w: 450,
             h: 60
-        },
-        data: {
-            title: "选择题一"
-        }
-    }, {
-        position: {
+        }, {
             x: 40,
             y: 500,
             w: 450,
             h: 60
-        },
+        }],
         data: {
-            title: "选择题二"
+            title: "选择题一"
         }
     }, {
-        position: {
+        position: [{
             x: 40,
             y: 565,
             w: 450,
             h: 60
-        },
+        }],
         data: {
             title: "选择题三"
         }
     }, {
-        position: {
+        position: [{
             x: 40,
             y: 620,
             w: 450,
             h: 60
-        },
+        }],
         data: {
             title: "选择题四"
         }
     }, {
-        position: {
+        position: [{
             x: 500,
             y: 330,
             w: 450,
             h: 100
-        },
+        }],
         data: {
             title: "选择题九"
         }
@@ -120,7 +115,7 @@ AreaModel就是function(area){}
 PicModel              
 >>PicModel.prototype.Large = function() {  图片放大            
 PicModel.prototype.Less = function() {   图片缩小 		
-PicModel.prototype.add = function(x, y, w, h, data) {加入题目信息	
+PicModel.prototype.add = function(positionArr, data) {加入题目信息	
 PicModel.prototype.getArea = function(pageX, pageY) {根据坐标获取当前区域的题目对象，如果没有当前区域的areaModel返回false 	
 PicModel.prototype.change = function(url, picData) {变更图片	
 PicModel.prototype.setPicData = function(picData) {设置图片数据	
@@ -131,7 +126,7 @@ PicModel.prototype.positionChange = function() {当图片外面的框的位置�
 PicModel.prototype.setMove = function(m) {设置图片是否可移动          	
 	
 AreaModel
->>AreaModel.prototype.getCurrentPosition = function() {获取当前区域的实际位置信息{x,y,w,h}    
+>>AreaModel.prototype.getCurrentPosition = function() {获取当前区域的实际位置信息[{x,y,w,h}]    
 AreaModel.prototype.next = function() {获取下一个areaModel			
 AreaModel.prototype.prev = function() {获取上一个areamodel			
 AreaModel.prototype.location = function(arg) { //center,top定位		
