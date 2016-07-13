@@ -107,68 +107,97 @@
 
         }
 
-        function AreaModel(position, data, index) {
-            this.id = position.x + "_" + position.y + "_" + position.w + "_" + position.h;
+        function AreaModel(positionArr, data, index) {
             this.order = index;
-            this.position = position;
+            this.position = positionArr;
+            this.num = 0;
             this.data = data;
             this.click = false;
-            this.div = $("<div></div>")
-                .attr("id", this.id)
-                .width(position.w)
-                .height(position.h)
-                .addClass("areamask")
-                .css({
-                    position: 'absolute',
-                    left: position.x,
-                    top: position.y
-                });
-
-            mask.append(this.div);
-            this.hoverDiv = $("<div></div>").css({
-                width: '100%',
-                height: '100%',
-                display: 'none'
-            });
-            this.clickDiv = this.hoverDiv.clone();
-            this.div.append(this.hoverDiv).append(this.clickDiv);
+            this.div = [], this.hoverDiv = [], this.clickDiv = [];
             var that = this;
             var isdbClick = false;
-            this.div.click(function() {
-                setTimeout(function() {
-                    if (!isdbClick) {
-                        if (!hasMove) {
-                            that.hoverDiv.hide();
-                            that.click ? that.clickDiv.fadeOut() : that.clickDiv.fadeIn();
-                            that.click = !that.click;
-                            selfEvent.click(that);
-                        } else {
-                            hasMove = false;
+            for (var i in this.position) {
+                this.div[i] = $("<div></div>")
+                    .width(this.position[i].w)
+                    .height(this.position[i].h)
+                    .addClass("areamask")
+                    .css({
+                        position: 'absolute',
+                        left: this.position[i].x,
+                        top: this.position[i].y
+                    });
+                this.hoverDiv[i] = $("<div></div>").css({
+                    width: '100%',
+                    height: '100%',
+                    display: 'none'
+                });
+                this.clickDiv[i] = this.hoverDiv[i].clone();
+                mask.append(this.div[i]);
+                this.div[i].append(this.hoverDiv[i]).append(this.clickDiv[i]);
+                this.div[i].click(function() {
+                    return function() {
+                        var o = i;
+                        setTimeout(function() {
+                            if (!isdbClick) {
+                                if (!hasMove) {
+                                    var j = 0;
+                                    while (j < that.position.length) {
+                                        that.hoverDiv[j].hide();
+                                        that.click ? that.clickDiv[j].fadeOut() : that.clickDiv[j].fadeIn();
+                                        j++;
+                                    }
+                                    that.click = !that.click;
+                                    that.num = o;
+                                    selfEvent.click(that);
+                                } else {
+                                    hasMove = false;
+                                }
+                            }
+                        }, 200);
+                    }
+                }()).dblclick(function() {
+                    var o = i;
+                    return function() {
+                        isdbClick = true;
+                        var j = 0;
+                        while (j < that.position.length) {
+                            that.clickDiv[j].fadeOut();
+                            j++;
+                        }
+                        selfEvent.dblclick(that);
+                    }
+                }()).mouseover(function() {
+                    if (!that.click) {
+                        var j = 0;
+                        while (j < that.position.length) {
+                            that.hoverDiv[j].show();
+                            j++;
                         }
                     }
-                }, 200);
-            }).dblclick(function() {
-                isdbClick = true;
-                that.clickDiv.hide();
-                selfEvent.dblclick(that);
-            }).mouseover(function() {
-                that.click || that.hoverDiv.show();
-            }).mouseout(function() {
-                that.hoverDiv.hide();
-            });
+                }).mouseout(function() {
+                    var j = 0;
+                    while (j < that.position.length) {
+                        that.hoverDiv[j].hide();
+                        j++;
+                    }
+                });
+            }
+
         }
 
         AreaModel.prototype.getCurrentPosition = function() {
             var xPercent = pic.width() / pointData.picW,
                 yPercent = pic.height() / pointData.picH;
-            var startX = pic.offset().left + xPercent * this.position.x,
-                startY = pic.offset().top + yPercent * this.position.y;
-            return {
-                x: startX,
-                y: startY,
-                w: xPercent * this.position.w,
-                h: yPercent * this.position.h
-            };
+            var positions = [];
+            for (var i in this.position) {
+                positions.push({
+                    x: pic.offset().left + xPercent * this.position[i].x,
+                    y: pic.offset().top + yPercent * this.position[i].y,
+                    w: xPercent * this.position[i].w,
+                    h: yPercent * this.position[i].h
+                });
+            }
+            return positions;
         }
         AreaModel.prototype.next = function() {
             if (this.order < examData.length - 1) {
@@ -185,6 +214,7 @@
         AreaModel.prototype.location = function(arg) { //center,top
             index = this.order;
             var r = this.getCurrentPosition();
+            r = r[this.num];
             var percent;
             if (pointData.maskW >= r.w && pointData.maskH >= r.h) { //放大percent>1
                 percent = pointData.maskW / r.w < pointData.maskH / r.h ? pointData.maskW / r.w : pointData.maskH / r.h;
@@ -211,6 +241,7 @@
 
         AreaModel.prototype.onlyShow = function() {
             var r = this.getCurrentPosition();
+            r = r[this.num];
             var div = $("<div></div>")
                 .addClass("smallmask")
                 .css({ position: 'absolute', 'background-color': 'white' });
@@ -232,10 +263,14 @@
 
         AreaModel.prototype.redraw = function() {
             var r = this.getCurrentPosition();
-            this.div.width(r.w)
-                .height(r.h)
-                .css("left", r.x - pointData.maskX)
-                .css("top", r.y - pointData.maskY);
+            var j = -1;
+            while (++j < this.position.length) {
+                this.div[j].width(r[j].w)
+                    .height(r[j].h)
+                    .css("left", r[j].x - pointData.maskX)
+                    .css("top", r[j].y - pointData.maskY);
+            }
+
         }
 
         PicModel.prototype.initData = function() {
@@ -269,13 +304,8 @@
             return this;
         }
 
-        PicModel.prototype.add = function(x, y, w, h, data) {
-            examData.push(new AreaModel({
-                x: x,
-                y: y,
-                w: w,
-                h: h
-            }, data, examData.length));
+        PicModel.prototype.add = function(positionArr, data) {
+            examData.push(new AreaModel(positionArr, data, examData.length));
             return this;
         }
 
@@ -315,7 +345,7 @@
             examData = [];
             if (picData) {
                 for (var i in picData) {
-                    this.add(picData[i].position.x, picData[i].position.y, picData[i].position.w, picData[i].position.h, picData[i].data);
+                    this.add(picData[i].position, picData[i].data);
                 }
             }
             return this;
@@ -335,12 +365,16 @@
             var style;
             for (var i in examData) {
                 style = fc(examData[i]);
-                examData[i].clickDiv.css(style.click.css).addClass(style.click.classes);
-                examData[i].hoverDiv.css(style.hover.css).addClass(style.hover.classes);
+                var k = -1;
+                while (++k < examData[i].position.length) {
+                    examData[i].clickDiv[k].css(style.click.css).addClass(style.click.classes);
+                    examData[i].hoverDiv[k].css(style.hover.css).addClass(style.hover.classes);
+                }
+
                 var ele;
                 for (var j in style.click.inner) {
                     ele = style.click.inner[j];
-                    examData[i].clickDiv.append($(ele.html).css(ele.css).addClass(ele.classes).click(function() {
+                    examData[i].clickDiv[0].append($(ele.html).css(ele.css).addClass(ele.classes).click(function() {
                         var area = examData[i];
                         var ele2 = ele;
                         return function(event) {
@@ -348,10 +382,11 @@
                             event.stopPropagation();
                         }
                     }()));
+
                 }
                 for (var j in style.hover.inner) {
                     ele = style.hover.inner[j];
-                    examData[i].hoverDiv.append($(ele.html).css(ele.css).addClass(ele.classes).click(function() {
+                    examData[i].hoverDiv[0].append($(ele.html).css(ele.css).addClass(ele.classes).click(function() {
                         var area = examData[i];
                         var ele2 = ele;
                         return function(event) {
@@ -359,6 +394,7 @@
                             event.stopPropagation();
                         }
                     }()));
+
                 }
             }
             return this;
@@ -371,10 +407,6 @@
         PicModel.prototype.setMove = function(m) {
             canMove = m;
         }
-
-
-
-
         var model = new PicModel();
         model.initData();
         return model;
