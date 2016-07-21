@@ -28,6 +28,10 @@
         };
 
         function dataInit() {
+            if (model.maxW) {
+                var percent = model.maxW / pic.width();
+                pic.width(pic.width() * percent);
+            }
             pointData = {
                 picX: 0, //图片相对于父div的横坐标
                 picY: 0, //图片相对于父div的纵坐标
@@ -58,11 +62,9 @@
             mask.find(".smallmask").remove();
         }).mouseup(function(event) {
             mouseDown = false;
-            hasMove = false;
         }).mouseout(function() {
             if (mouseDown) {
                 mouseDown = false;
-                hasMove = false;
             }
         }).mousemove(function(event) {
             if (!canMove) {
@@ -152,6 +154,8 @@
                                 } else {
                                     hasMove = false;
                                 }
+                            } else {
+                                isdbClick = false;
                             }
                         }, 200);
                     }
@@ -180,15 +184,23 @@
                         that.hoverDiv[j].hide();
                         j++;
                     }
+                }).mousemove(function() {
+                    !event.preventDefault || event.preventDefault();
                 });
             }
 
+        }
+        AreaModel.prototype.singleClick = function() {
+            for (var i in this.div) {
+                this.div[i].trigger("click");
+            }
         }
 
         AreaModel.prototype.getCurrentPosition = function() {
             var xPercent = pic.width() / pointData.picW,
                 yPercent = pic.height() / pointData.picH;
             var positions = [];
+            
             for (var i in this.position) {
                 positions.push({
                     x: pic.offset().left + xPercent * this.position[i].x,
@@ -212,30 +224,34 @@
             return false;
         }
         AreaModel.prototype.location = function(arg) { //center,top
-            index = this.order;
-            var r = this.getCurrentPosition();
-            r = r[this.num];
-            var percent;
-            if (pointData.maskW >= r.w && pointData.maskH >= r.h) { //放大percent>1
-                percent = pointData.maskW / r.w < pointData.maskH / r.h ? pointData.maskW / r.w : pointData.maskH / r.h;
-            } else { //缩小percent<1
-                percent = r.w / pointData.maskW > r.h / pointData.maskH ? pointData.maskW / r.w : pointData.maskH / r.h;
+            function exe() {
+                index = this.order;
+                var r = this.getCurrentPosition();
+                r = r[this.num];
+                var percent;
+                if (pointData.maskW >= r.w && pointData.maskH >= r.h) { //放大percent>1
+                    percent = pointData.maskW / r.w < pointData.maskH / r.h ? pointData.maskW / r.w : pointData.maskH / r.h;
+                } else { //缩小percent<1
+                    percent = r.w / pointData.maskW > r.h / pointData.maskH ? pointData.maskW / r.w : pointData.maskH / r.h;
+                }
+                var disW = (percent - 1) * pic.width(),
+                    disH = (percent - 1) * pic.height();
+                pic.width(pic.width() + disW);
+                var targetX,
+                    targetY;
+                if (arg == "center") {
+                    targetX = pointData.maskX + (pointData.maskW - r.w * percent) / 2;
+                    targetY = pointData.maskY + (pointData.maskH - r.h * percent) / 2;
+                } else if (arg == "top") {
+                    targetX = pointData.maskX;
+                    targetY = pointData.maskY;
+                }
+                pic.css("left", pic.position().left + targetX - (r.x - pic.offset().left) * percent - pic.offset().left)
+                    .css("top", pic.position().top + targetY - (r.y - pic.offset().top) * percent - pic.offset().top);
+                moveBorder();
             }
-            var disW = (percent - 1) * pic.width(),
-                disH = (percent - 1) * pic.height();
-            pic.width(pic.width() + disW);
-            var targetX,
-                targetY;
-            if (arg == "center") {
-                targetX = pointData.maskX + (pointData.maskW - r.w * percent) / 2;
-                targetY = pointData.maskY + (pointData.maskH - r.h * percent) / 2;
-            } else if (arg == "top") {
-                targetX = pointData.maskX;
-                targetY = pointData.maskY;
-            }
-            pic.css("left", pic.position().left + targetX - (r.x - pic.offset().left) * percent - pic.offset().left)
-                .css("top", pic.position().top + targetY - (r.y - pic.offset().top) * percent - pic.offset().top);
-            moveBorder();
+            var that = this;
+            pic.width() == 0 ? pic.load(function() { exe.apply(that) }) : exe.apply(that);
             return this;
         }
 
@@ -279,6 +295,7 @@
                 pic.parent().html(newPic);
                 pic = newPic;
                 pic.attr("src", picUrl);
+
             }
             pic.width() == 0 ? pic.load(dataInit) : dataInit(); //保证能获取图片数据
         }
@@ -317,35 +334,99 @@
                 picY = pic.offset().top;
             var position;
             for (var i in examData) {
-                position = examData[i].position;
-                startX = picX + xPercent * position.x;
-                startY = picY + yPercent * position.y;
-                if (pageX >= startX && pageX <= startX + xPercent * position.w) {
-                    if (pageY >= startY && pageY <= startY + yPercent * position.h) {
-                        return examData[i];
+                for (var j in examData[i].position) {
+                    position = examData[i].position[j];
+                    startX = picX + xPercent * position.x;
+                    startY = picY + yPercent * position.y;
+                    if (pageX >= startX && pageX <= startX + xPercent * position.w) {
+                        if (pageY >= startY && pageY <= startY + yPercent * position.h) {
+                            return examData[i];
+                        }
+                    }
+                }
+
+            }
+            return false;
+        }
+
+        PicModel.prototype.getArea2 = function(x, y) {
+            var startX, startY;
+            var position;
+            for (var i in examData) {
+                for (var j in examData[i].position) {
+                    position = examData[i].position[j];
+                    startX = position.x;
+                    startY = position.y;
+                    if (x >= startX && x <= startX + position.w) {
+                        if (y >= startY && y <= startY + position.h) {
+                            return examData[i];
+                        }
                     }
                 }
             }
             return false;
         }
 
-        PicModel.prototype.maxSize = function(w, h) {
-            var percent = pic.width() / w > pic.height() / h ? w / pic.width() : h / pic.height();
-            percent >= 1 || pic.width(pic.width() * percent);
-            return this;
-        }
 
         PicModel.prototype.change = function(url, picData) {
             picUrl = url;
+            this.initData();
             this.setPicData(picData);
             return this;
         }
 
         PicModel.prototype.setPicData = function(picData) {
             examData = [];
+            mask.find(".areamask").remove();
             if (picData) {
                 for (var i in picData) {
                     this.add(picData[i].position, picData[i].data);
+                }
+            }
+            if (this.areaDiv) {
+                var style;
+                for (var i in examData) {
+                    style = this.areaDiv(examData[i]);
+                    var k = -1;
+                    while (++k < examData[i].position.length) {
+                        examData[i].clickDiv[k].css(style.click.css).addClass(style.click.classes);
+                        examData[i].hoverDiv[k].css(style.hover.css).addClass(style.hover.classes);
+                    }
+
+                    var ele;
+                    for (var j in style.click.inner) {
+                        ele = style.click.inner[j];
+                        var ii = $(ele.html).css(ele.css).addClass(ele.classes);
+                        if (ele.event) {
+                            for (var e in ele.event) {
+                                if (e != "click") {
+                                    ii.bind(e, function() {
+                                        var area = examData[i];
+                                        var ele2 = ele;
+                                        var that = ii;
+                                        return function(event) {
+                                            ele2.event[e].apply(that, [area]);
+                                            event.stopPropagation();
+                                        }
+                                    }());
+                                }
+                            }
+                        }
+                        ii.click(function() {
+                            var area = examData[i];
+                            var ele2 = ele;
+                            return function(event) {
+                                ele2.event.click && ele2.event.click(area);
+                                event.stopPropagation();
+                            }
+                        }());
+                        examData[i].clickDiv[0].append(ii);
+
+                    }
+                    for (var j in style.hover.inner) {
+                        ele = style.hover.inner[j];
+                        examData[i].hoverDiv[0].append($(ele.html).css(ele.css).addClass(ele.classes));
+                    }
                 }
             }
             return this;
@@ -362,41 +443,7 @@
             return this;
         }
         PicModel.prototype.setAreaDiv = function(fc) {
-            var style;
-            for (var i in examData) {
-                style = fc(examData[i]);
-                var k = -1;
-                while (++k < examData[i].position.length) {
-                    examData[i].clickDiv[k].css(style.click.css).addClass(style.click.classes);
-                    examData[i].hoverDiv[k].css(style.hover.css).addClass(style.hover.classes);
-                }
-
-                var ele;
-                for (var j in style.click.inner) {
-                    ele = style.click.inner[j];
-                    examData[i].clickDiv[0].append($(ele.html).css(ele.css).addClass(ele.classes).click(function() {
-                        var area = examData[i];
-                        var ele2 = ele;
-                        return function(event) {
-                            ele2.event(area);
-                            event.stopPropagation();
-                        }
-                    }()));
-
-                }
-                for (var j in style.hover.inner) {
-                    ele = style.hover.inner[j];
-                    examData[i].hoverDiv[0].append($(ele.html).css(ele.css).addClass(ele.classes).click(function() {
-                        var area = examData[i];
-                        var ele2 = ele;
-                        return function(event) {
-                            ele2.event(area);
-                            event.stopPropagation();
-                        }
-                    }()));
-
-                }
-            }
+            this.areaDiv = fc;
             return this;
         }
 
@@ -404,14 +451,23 @@
             pointData.maskX = mask.offset().left;
             pointData.maskY = mask.offset().top;
         }
+
         PicModel.prototype.setMove = function(m) {
             canMove = m;
+        }
+        PicModel.prototype.forEach = function(callback) {
+            for (var i in examData) {
+                callback(examData[i]);
+            }
+        }
+        PicModel.prototype.maxW = function(w) {
+            this.maxW = w;
+            return this;
         }
         var model = new PicModel();
         model.initData();
         return model;
     }
-
 
     window.WpPicModel = WpPicModel;
 
